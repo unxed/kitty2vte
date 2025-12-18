@@ -188,18 +188,20 @@ int main(int argc, char** argv) {
         // Determine char code
         // For simple letters/numbers:
         if (def.ch != 0) {
-            if (shift || ((ev.dwControlKeyState &= CAPSLOCK_ON) && !shift)) {
+
+            auto tmp = ev.dwControlKeyState;
+            if (shift || ((tmp &= CAPSLOCK_ON) && !shift)) {
                 ev.uChar.UnicodeChar = def.shift_ch;
             } else {
                 ev.uChar.UnicodeChar = def.ch;
             }
-            
+
             // Ctrl behavior: usually transforms char to control code (1-26)
             if (ctrl && !alt && isalpha(def.ch)) {
                 ev.uChar.UnicodeChar = (WCHAR)(toupper(def.ch) - 'A' + 1);
             }
         }
-        
+
         // Numpad logic adjustment
         // If it's a keypad key and NumLock is ON, it produces a digit/char
         // If NumLock is OFF, it acts as navigation (VK_HOME etc), but run_tests passes KP_0...
@@ -234,6 +236,6 @@ int main(int argc, char** argv) {
     } else {
         std::cout << result;
     }
-    
+
     return 0;
 }

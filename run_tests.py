@@ -5,6 +5,7 @@ import os
 import json
 import sys
 import argparse
+import re
 from collections import defaultdict
 
 # Configuration
@@ -112,6 +113,43 @@ def format_raw_output(raw_bytes):
     except Exception:
         return f"[DECODE_ERROR: {raw_bytes.hex()}]"
 
+def parse_kitty_sequence(raw_bytes):
+    """
+    Parses a kitty CSI u sequence to extract unshifted and shifted key codes.
+    Returns a dictionary {'unshifted': val, 'shifted': val} if both are present,
+    otherwise returns None.
+    Example sequence: b'\x1b[97:65;2u' -> {'unshifted': 97, 'shifted': 65}
+    """
+    try:
+        text = raw_bytes.decode('utf-8')
+        # Check for CSI u format: ESC [ <params> u
+        if not text.startswith('\x1b[') or not text.endswith('u'):
+            return None
+
+        # Extract content between ESC[ and u
+        content = text[2:-1]
+
+        # Split into main parts (key codes, modifiers, etc.)
+        parts = content.split(';')
+        if not parts:
+            return None
+
+        # The key codes are the first part, separated by colons
+        key_codes_part = parts[0]
+        key_codes = key_codes_part.split(':')
+
+        # We need at least two non-empty key codes for unshifted and shifted
+        if len(key_codes) >= 2 and key_codes[0] and key_codes[1]:
+            return {
+                'unshifted': int(key_codes[0]),
+                'shifted': int(key_codes[1])
+            }
+    except (UnicodeDecodeError, ValueError, IndexError):
+        # Ignore malformed sequences or non-integer parts
+        return None
+
+    return None
+
 def run_command(cmd_args, debug=False):
     if debug:
         print(f"\n[DEBUG] Running: {' '.join(cmd_args)}", file=sys.stderr)
@@ -217,13 +255,28 @@ def main():
                 print(f"Progress: {percent}% ({i}/{total_tests}) | Found {mismatch_count} mismatches", flush=True)
 
             base_cmd = ['--key', key_info['name']] + mods + locks
-            
-            # Build commands
-            kitty_cmd = [KITTY_TESTER] + base_cmd + ['--kitty-flags', str(flags)]
-            target_cmd = target_conf['cmd_builder'](target_conf['binary'], base_cmd, key_info, flags)
 
-            # Execution
+            kitty_cmd = [KITTY_TESTER] + base_cmd + ['--kitty-flags', str(flags)]
+
+            # Run kitty_tester first to decide if we need to skip for far2l
             kitty_out_raw = run_command(kitty_cmd, args.debug)
+
+            # --- START: far2l specific logic ---
+            if args.target == 'far2l':
+                parsed_kitty = parse_kitty_sequence(kitty_out_raw)
+                if parsed_kitty and parsed_kitty['unshifted'] != parsed_kitty['shifted']:
+                    test_case = {
+                        'combo': format_key_combo(key_info, mods, locks, flags),
+                        'status': 'skipped_far2l_unsupported',
+                        'kitty_out': kitty_out_raw,
+                        'target_out': b'[SKIPPED_BY_SCRIPT]',
+                    }
+                    results.append(test_case)
+                    continue # Skip this test combination
+            # --- END: far2l specific logic ---
+
+            # Build and run target command
+            target_cmd = target_conf['cmd_builder'](target_conf['binary'], base_cmd, key_info, flags)
             target_out_raw = run_command(target_cmd, args.debug)
 
             kitty_out_str = format_raw_output(kitty_out_raw)
@@ -272,7 +325,11 @@ def main():
 
         skipped_kitty = len([r for r in results if r['status'] == 'skipped_kitty_empty'])
         skipped_target = len([r for r in results if r['status'] == 'skipped_target_fallback'])
-        skipped_total = skipped_kitty + skipped_target
+        # --- START: New statistics category ---
+        skipped_far2l_unsupported = len([r for r in results if r['status'] == 'skipped_far2l_unsupported'])
+        # --- END: New statistics category ---
+
+        skipped_total = skipped_kitty + skipped_target + skipped_far2l_unsupported
 
         total_keys_tested = len(key_status)
         successful_keys_count = sum(1 for passed in key_status.values() if passed)
@@ -282,7 +339,9 @@ def main():
         print(f"Total combinations run: {len(results)} / {total_tests}")
         print(f"  Matches: {matches}")
         print(f"  Mismatches: {mismatches}")
-        print(f"  Skipped: {skipped_total} (Kitty: {skipped_kitty}, Target: {skipped_target})")
+        # --- START: Updated summary printout ---
+        print(f"  Skipped: {skipped_total} (Kitty empty: {skipped_kitty}, Target fallback: {skipped_target}, Far2L unsupported: {skipped_far2l_unsupported})")
+        # --- END: Updated summary printout ---
         print(f"  Errors: {errors}")
         print("\n--- Output Files ---")
         if mismatches or errors:
