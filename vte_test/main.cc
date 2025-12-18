@@ -46,6 +46,20 @@ void initialize_keyval_map() {
     keyval_map["period"] = GDK_KEY_period;
     keyval_map["slash"] = GDK_KEY_slash;
     keyval_map["`"] = GDK_KEY_grave;
+
+    // Shifted keys mapped by name
+    keyval_map["~"] = GDK_KEY_asciitilde;
+    keyval_map["_"] = GDK_KEY_underscore;
+    keyval_map["+"] = GDK_KEY_plus;
+    keyval_map["{"] = GDK_KEY_braceleft;
+    keyval_map["}"] = GDK_KEY_braceright;
+    keyval_map["|"] = GDK_KEY_bar;
+    keyval_map[":"] = GDK_KEY_colon;
+    keyval_map["\""] = GDK_KEY_quotedbl;
+    keyval_map["<"] = GDK_KEY_less;
+    keyval_map[">"] = GDK_KEY_greater;
+    keyval_map["?"] = GDK_KEY_question;
+
     // Keypad keys
     for(int i = 0; i <= 9; ++i) {
         keyval_map["KP_" + std::to_string(i)] = GDK_KEY_KP_0 + i;

@@ -1,62 +1,92 @@
 #include "kitty_mocks.h"
-
 #include "kitty_encoder_body.inc"
-
 #include <string.h>
 #include <ctype.h>
 
-int get_key_code(const char* name) {
-    if (strlen(name) == 1 && isprint(name[0])) return (int)name[0];
-    
-    if (strcmp(name, "Escape") == 0) return GLFW_FKEY_ESCAPE;
-    if (strcmp(name, "Enter") == 0) return GLFW_FKEY_ENTER;
-    if (strcmp(name, "Return") == 0) return GLFW_FKEY_ENTER; // Alias
-    if (strcmp(name, "Tab") == 0) return GLFW_FKEY_TAB;
-    if (strcmp(name, "BackSpace") == 0) return GLFW_FKEY_BACKSPACE;
-    if (strcmp(name, "Insert") == 0) return GLFW_FKEY_INSERT;
-    if (strcmp(name, "Delete") == 0) return GLFW_FKEY_DELETE;
-    if (strcmp(name, "Left") == 0) return GLFW_FKEY_LEFT;
-    if (strcmp(name, "Right") == 0) return GLFW_FKEY_RIGHT;
-    if (strcmp(name, "Up") == 0) return GLFW_FKEY_UP;
-    if (strcmp(name, "Down") == 0) return GLFW_FKEY_DOWN;
-    if (strcmp(name, "Page_Up") == 0) return GLFW_FKEY_PAGE_UP;
-    if (strcmp(name, "Page_Down") == 0) return GLFW_FKEY_PAGE_DOWN;
-    if (strcmp(name, "Home") == 0) return GLFW_FKEY_HOME;
-    if (strcmp(name, "End") == 0) return GLFW_FKEY_END;
-    
-    if (strcmp(name, "F1") == 0) return GLFW_FKEY_F1;
-    if (strcmp(name, "F2") == 0) return GLFW_FKEY_F2;
-    if (strcmp(name, "F3") == 0) return GLFW_FKEY_F3;
-    if (strcmp(name, "F4") == 0) return GLFW_FKEY_F4;
-    if (strcmp(name, "F5") == 0) return GLFW_FKEY_F5;
-    if (strcmp(name, "F6") == 0) return GLFW_FKEY_F6;
-    if (strcmp(name, "F7") == 0) return GLFW_FKEY_F7;
-    if (strcmp(name, "F8") == 0) return GLFW_FKEY_F8;
-    if (strcmp(name, "F9") == 0) return GLFW_FKEY_F9;
-    if (strcmp(name, "F10") == 0) return GLFW_FKEY_F10;
-    if (strcmp(name, "F11") == 0) return GLFW_FKEY_F11;
-    if (strcmp(name, "F12") == 0) return GLFW_FKEY_F12;
+typedef struct {
+    const char* name;
+    int key;
+    int shifted_key;
+    const char* numpad_text;
+} KeyInfo;
 
-    if (strcmp(name, "KP_0") == 0) return GLFW_FKEY_KP_0;
-    if (strcmp(name, "KP_5") == 0) return GLFW_FKEY_KP_5;
-    if (strcmp(name, "KP_9") == 0) return GLFW_FKEY_KP_9;
-    
-    if (strcmp(name, "KP_Home") == 0) return GLFW_FKEY_KP_HOME;
-    if (strcmp(name, "KP_End") == 0) return GLFW_FKEY_KP_END;
-    if (strcmp(name, "KP_Up") == 0) return GLFW_FKEY_KP_UP;
-    if (strcmp(name, "KP_Down") == 0) return GLFW_FKEY_KP_DOWN;
-    if (strcmp(name, "KP_Left") == 0) return GLFW_FKEY_KP_LEFT;
-    if (strcmp(name, "KP_Right") == 0) return GLFW_FKEY_KP_RIGHT;
-    if (strcmp(name, "KP_Page_Up") == 0) return GLFW_FKEY_KP_PAGE_UP;
-    if (strcmp(name, "KP_Page_Down") == 0) return GLFW_FKEY_KP_PAGE_DOWN;
-    if (strcmp(name, "KP_Insert") == 0) return GLFW_FKEY_KP_INSERT;
-    if (strcmp(name, "KP_Delete") == 0) return GLFW_FKEY_KP_DELETE;
-    if (strcmp(name, "KP_Begin") == 0) return GLFW_FKEY_KP_BEGIN;
-    
-    if (strcmp(name, "space") == 0) return ' ';
-    
-    fprintf(stderr, "Warning: Unknown key name '%s', returning 0.\n", name);
-    return 0;
+static const KeyInfo key_map[] = {
+    // Letters
+    {"a", 'a', 'A', NULL}, {"b", 'b', 'B', NULL}, {"c", 'c', 'C', NULL},
+    {"d", 'd', 'D', NULL}, {"e", 'e', 'E', NULL}, {"f", 'f', 'F', NULL},
+    {"g", 'g', 'G', NULL}, {"h", 'h', 'H', NULL}, {"i", 'i', 'I', NULL},
+    {"j", 'j', 'J', NULL}, {"k", 'k', 'K', NULL}, {"l", 'l', 'L', NULL},
+    {"m", 'm', 'M', NULL}, {"n", 'n', 'N', NULL}, {"o", 'o', 'O', NULL},
+    {"p", 'p', 'P', NULL}, {"q", 'q', 'Q', NULL}, {"r", 'r', 'R', NULL},
+    {"s", 's', 'S', NULL}, {"t", 't', 'T', NULL}, {"u", 'u', 'U', NULL},
+    {"v", 'v', 'V', NULL}, {"w", 'w', 'W', NULL}, {"x", 'x', 'X', NULL},
+    {"y", 'y', 'Y', NULL}, {"z", 'z', 'Z', NULL},
+    // Numbers
+    {"0", '0', ')', NULL}, {"1", '1', '!', NULL}, {"2", '2', '@', NULL},
+    {"3", '3', '#', NULL}, {"4", '4', '$', NULL}, {"5", '5', '%', NULL},
+    {"6", '6', '^', NULL}, {"7", '7', '&', NULL}, {"8", '8', '*', NULL},
+    {"9", '9', '(', NULL},
+    // Symbols & Aliases for run_tests.py
+    {"`", '`', '~', NULL}, {"~", '`', '~', NULL},
+    {"-", '-', '_', NULL}, {"_", '-', '_', NULL}, {"minus", '-', '_', NULL},
+    {"=", '=', '+', NULL}, {"+", '=', '+', NULL}, {"equal", '=', '+', NULL},
+    {"[", '[', '{', NULL}, {"{", '[', '{', NULL}, {"bracketleft", '[', '{', NULL},
+    {"]", ']', '}', NULL}, {"}", ']', '}', NULL}, {"bracketright", ']', '}', NULL},
+    {"\\", '\\', '|', NULL}, {"|", '\\', '|', NULL}, {"backslash", '\\', '|', NULL},
+    {";", ';', ':', NULL}, {":", ';', ':', NULL}, {"semicolon", ';', ':', NULL},
+    {"'", '\'', '"', NULL}, {"\"", '\'', '"', NULL}, {"apostrophe", '\'', '"', NULL},
+    {",", ',', '<', NULL}, {"<", ',', '<', NULL}, {"comma", ',', '<', NULL},
+    {".", '.', '>', NULL}, {">", '.', '>', NULL}, {"period", '.', '>', NULL},
+    {"/", '/', '?', NULL}, {"?", '/', '?', NULL}, {"slash", '/', '?', NULL},
+    // Functional Keys
+    {"F1", GLFW_FKEY_F1, 0, NULL}, {"F2", GLFW_FKEY_F2, 0, NULL},
+    {"F3", GLFW_FKEY_F3, 0, NULL}, {"F4", GLFW_FKEY_F4, 0, NULL},
+    {"F5", GLFW_FKEY_F5, 0, NULL}, {"F6", GLFW_FKEY_F6, 0, NULL},
+    {"F7", GLFW_FKEY_F7, 0, NULL}, {"F8", GLFW_FKEY_F8, 0, NULL},
+    {"F9", GLFW_FKEY_F9, 0, NULL}, {"F10", GLFW_FKEY_F10, 0, NULL},
+    {"F11", GLFW_FKEY_F11, 0, NULL}, {"F12", GLFW_FKEY_F12, 0, NULL},
+    // Control keys
+    {"Escape", GLFW_FKEY_ESCAPE, 0, NULL},
+    {"Tab", GLFW_FKEY_TAB, 0, NULL},
+    {"Return", GLFW_FKEY_ENTER, 0, NULL},
+    {"BackSpace", GLFW_FKEY_BACKSPACE, 0, NULL},
+    {"space", ' ', ' ', NULL},
+    // Navigation
+    {"Insert", GLFW_FKEY_INSERT, 0, NULL},
+    {"Delete", GLFW_FKEY_DELETE, 0, NULL},
+    {"Home", GLFW_FKEY_HOME, 0, NULL},
+    {"End", GLFW_FKEY_END, 0, NULL},
+    {"Page_Up", GLFW_FKEY_PAGE_UP, 0, NULL},
+    {"Page_Down", GLFW_FKEY_PAGE_DOWN, 0, NULL},
+    // Arrows
+    {"Up", GLFW_FKEY_UP, 0, NULL}, {"Down", GLFW_FKEY_DOWN, 0, NULL},
+    {"Left", GLFW_FKEY_LEFT, 0, NULL}, {"Right", GLFW_FKEY_RIGHT, 0, NULL},
+    // Keypad
+    {"KP_0", 57399, 0, "0"}, {"KP_1", 57400, 0, "1"},
+    {"KP_2", 57401, 0, "2"}, {"KP_3", 57402, 0, "3"},
+    {"KP_4", 57403, 0, "4"}, {"KP_5", 57404, 0, "5"},
+    {"KP_6", 57405, 0, "6"}, {"KP_7", 57406, 0, "7"},
+    {"KP_8", 57407, 0, "8"}, {"KP_9", 57408, 0, "9"},
+    {"KP_Decimal", 57409, 0, "."}, {"KP_Divide", 57410, 0, "/"},
+    {"KP_Multiply", 57411, 0, "*"}, {"KP_Subtract", 57412, 0, "-"},
+    {"KP_Add", 57413, 0, "+"}, {"KP_Enter", 57414, 0, "\r"},
+    {"KP_Equal", 57415, 0, "="}, {"KP_Separator", 57416, 0, ","},
+    {"KP_Left", 57417, 0, NULL}, {"KP_Right", 57418, 0, NULL},
+    {"KP_Up", 57419, 0, NULL}, {"KP_Down", 57420, 0, NULL},
+    {"KP_Page_Up", 57421, 0, NULL}, {"KP_Page_Down", 57422, 0, NULL},
+    {"KP_Home", 57423, 0, NULL}, {"KP_End", 57424, 0, NULL},
+    {"KP_Insert", 57425, 0, NULL}, {"KP_Delete", 57426, 0, NULL},
+    {"KP_Begin", 57427, 0, NULL},
+    {NULL, 0, 0, NULL}
+};
+
+static const KeyInfo* find_key_info(const char* name) {
+    for (int i = 0; key_map[i].name != NULL; i++) {
+        if (strcmp(key_map[i].name, name) == 0) {
+            return &key_map[i];
+        }
+    }
+    return NULL;
 }
 
 int main(int argc, char** argv) {
@@ -69,6 +99,7 @@ int main(int argc, char** argv) {
     memset(&ev, 0, sizeof(ev));
     ev.action = GLFW_PRESS; // Default
     
+    const char* key_name = NULL;
     unsigned int kitty_flags = 0;
     bool cursor_key_mode = false;
     bool has_mods_that_prevent_text = false;
@@ -76,7 +107,7 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; i++) {
         const char* arg = argv[i];
         if (strcmp(arg, "--key") == 0 && i + 1 < argc) {
-            ev.key = get_key_code(argv[++i]);
+            key_name = argv[++i];
         }
         else if (strcmp(arg, "--shift") == 0) ev.mods |= GLFW_MOD_SHIFT;
         else if (strcmp(arg, "--ctrl") == 0) { ev.mods |= GLFW_MOD_CONTROL; has_mods_that_prevent_text = true; }
@@ -88,7 +119,6 @@ int main(int argc, char** argv) {
             const char* action_str = argv[++i];
             if (strcmp(action_str, "release") == 0) ev.action = GLFW_RELEASE;
             else if (strcmp(action_str, "repeat") == 0) ev.action = GLFW_REPEAT;
-            else ev.action = GLFW_PRESS;
         }
         else if (strcmp(arg, "--kitty-flags") == 0 && i + 1 < argc) {
             kitty_flags = atoi(argv[++i]);
@@ -97,30 +127,45 @@ int main(int argc, char** argv) {
             cursor_key_mode = true;
         }
     }
+
+    if (!key_name) {
+        fprintf(stderr, "Error: --key argument is missing.\n");
+        return 1;
+    }
+
+    const KeyInfo* key_info = find_key_info(key_name);
+    if (!key_info) {
+        fprintf(stderr, "Error: Unknown key name '%s'.\n", key_name);
+        return 1;
+    }
+
+    ev.key = key_info->key;
+    ev.shifted_key = key_info->shifted_key;
     
-    // Minimal emulation of ev.text and ev.shifted_key to match kitty behavior.
-    // When Ctrl/Alt/Super are pressed, ev.text must be NULL to force CSI-u output.
-    if (ev.key >= 'a' && ev.key <= 'z') {
-        static char text_buf[2] = {0};
-        
-        if (ev.mods & GLFW_MOD_SHIFT) {
-            ev.shifted_key = ev.key - 32; // 'A'
-            text_buf[0] = (char)ev.shifted_key;
-        } else {
-            ev.shifted_key = 0;
-            text_buf[0] = (char)ev.key; // 'a'
+    static char text_buf[2] = {0};
+    if (!has_mods_that_prevent_text) {
+        bool text_generated = false;
+        if (key_info->key >= 'a' && key_info->key <= 'z') {
+            bool shift_active = (ev.mods & GLFW_MOD_SHIFT) != 0;
+            bool caps_active = (ev.mods & GLFW_MOD_CAPS_LOCK) != 0;
+            text_buf[0] = (shift_active ^ caps_active) ? (char)key_info->shifted_key : (char)key_info->key;
+            text_generated = true;
+        } else if (key_info->shifted_key != 0) {
+            text_buf[0] = (ev.mods & GLFW_MOD_SHIFT) ? (char)key_info->shifted_key : (char)key_info->key;
+            text_generated = true;
+        } else if (key_info->key < 256) {
+             text_buf[0] = (char)key_info->key;
+             text_generated = true;
         }
         
-        if (!has_mods_that_prevent_text) {
-             ev.text = text_buf;
+        if (key_info->numpad_text && (ev.mods & GLFW_MOD_NUM_LOCK)) {
+             text_buf[0] = key_info->numpad_text[0];
+             text_generated = true;
         }
 
-    } else if (ev.key < 128 && isprint(ev.key)) {
-         static char text_buf[2] = {0};
-         text_buf[0] = (char)ev.key;
-         if (!has_mods_that_prevent_text) {
-             ev.text = text_buf;
-         }
+        if (text_generated) {
+            ev.text = text_buf;
+        }
     }
 
 
@@ -131,27 +176,14 @@ int main(int argc, char** argv) {
 
     if (result == SEND_TEXT_TO_CHILD) {
         if (ev.text) {
-            printf("%s", ev.text);
+            fwrite(ev.text, 1, strlen(ev.text), stdout);
         }
     } else if (result > 0) {
-        for (int i = 0; i < result; i++) {
-            if (output[i] == '\x1b') printf("ESC");
-            else if (output[i] < 32 || output[i] == 127) {
-                switch(output[i]) {
-                    case '\r': printf("\\r"); break;
-                    case '\n': printf("\\n"); break;
-                    case '\t': printf("\\t"); break;
-                    case '\0': printf("\\0"); break;
-                    case '\b': printf("\\b"); break;
-                    default: printf("\\x%02x", (unsigned char)output[i]);
-                }
-            }
-            else printf("%c", output[i]);
-        }
+        fwrite(output, 1, result, stdout);
     }
 
-    fprintf(stderr, "[kittyTester] Key: %d, Mods: %d, Flags: %d, Action: %d, Text: '%s' -> Result Len: %d\n", 
-            ev.key, ev.mods, kitty_flags, ev.action, ev.text ? ev.text : "(null)", result);
+    fprintf(stderr, "[kittyTester] Key: %u, Shifted: %u, Mods: %d, Flags: %d, Action: %d, Text: '%s' -> Result Len: %d\n", 
+            ev.key, ev.shifted_key, ev.mods, kitty_flags, ev.action, ev.text ? ev.text : "(null)", result);
 
     return 0;
 }

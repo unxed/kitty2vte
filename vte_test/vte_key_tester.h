@@ -60,7 +60,20 @@ enum {
     GDK_KEY_period = 0x002e,
     GDK_KEY_slash = 0x002f,
     GDK_KEY_grave = 0x0060,
-    
+
+    // Shifted symbols
+    GDK_KEY_asciitilde = 0x007e,
+    GDK_KEY_underscore = 0x005f,
+    GDK_KEY_plus = 0x002b,
+    GDK_KEY_braceleft = 0x007b,
+    GDK_KEY_braceright = 0x007d,
+    GDK_KEY_bar = 0x007c,
+    GDK_KEY_colon = 0x003a,
+    GDK_KEY_quotedbl = 0x0022,
+    GDK_KEY_less = 0x003c,
+    GDK_KEY_greater = 0x003e,
+    GDK_KEY_question = 0x003f,
+
     // Function keys
     GDK_KEY_F1 = 0xffbe, GDK_KEY_F2 = 0xffbf, GDK_KEY_F3 = 0xffc0,
     GDK_KEY_F4 = 0xffc1, GDK_KEY_F5 = 0xffc2, GDK_KEY_F6 = 0xffc3,
@@ -74,7 +87,7 @@ enum {
     GDK_KEY_Print = 0xFF61,
     GDK_KEY_Pause = 0xFF13,
     GDK_KEY_Menu = 0xFF67,
-    
+
     // Modifier keys
     GDK_KEY_Shift_L = 0xFFE1,
     GDK_KEY_Shift_R = 0xFFE2,

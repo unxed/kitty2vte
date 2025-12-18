@@ -139,6 +139,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test and compare kitty and VTE key encoders.")
     parser.add_argument("--debug", action="store_true", help="Enable debug output for commands.")
     parser.add_argument("--limit", type=int, default=0, help="Limit the number of test combinations to run.")
+    parser.add_argument("--start-at-percent", type=int, default=0, help="Start tests from a certain percentage of the total combinations (0-99).")
     args = parser.parse_args()
 
     if not all(os.path.exists(p) for p in [KITTY_TESTER, VTE_TESTER]):
@@ -157,7 +158,14 @@ def main():
         all_combinations = all_combinations[:args.limit]
         total_tests = len(all_combinations)
 
-    print(f"Starting tests. Combinations to check: {total_tests}")
+    start_index = 0
+    if args.start_at_percent > 0:
+        if 0 < args.start_at_percent < 100:
+            start_index = (total_tests * args.start_at_percent) // 100
+            all_combinations = all_combinations[start_index:]
+            print(f"Starting at {args.start_at_percent}%, skipping first {start_index} combinations.")
+
+    print(f"Starting tests. Combinations to check: {len(all_combinations)}")
 
     results = []
     mismatch_count = 0
@@ -166,12 +174,14 @@ def main():
     key_status = defaultdict(lambda: True)
 
     try:
-        for i, (key_info, mods, locks, flags) in enumerate(all_combinations):
+        for i_offset, (key_info, mods, locks, flags) in enumerate(all_combinations):
+
+            i = start_index + i_offset
 
             key_name = key_info['name']
 
             if i > 0 and i % 500 == 0:
-                percent = (i * 100) // total_tests
+                percent = ((i + 1) * 100) // total_tests
                 print(f"Progress: {percent}% ({i}/{total_tests}) | Found {mismatch_count} mismatches", flush=True)
 
             base_cmd = ['--key', key_info['name']] + mods + locks
@@ -189,10 +199,10 @@ def main():
             if "[ERROR:" in kitty_out_str or "[ERROR:" in vte_out_str:
                 status = 'error'
             elif kitty_out_str == "[EMPTY]":
-                # Likely kitty shortcut or consumed event, skip comparison
                 status = 'skipped_kitty_empty'
+            # Consolidate both fallback conditions for VTE
             elif vte_out_str == "[LEGACY_FALLBACK]" or vte_out_str == "[EMPTY]":
-                status = 'skipped_vte'
+                status = 'skipped_vte_fallback'
             elif kitty_out_str == vte_out_str:
                 status = 'match'
             else:
@@ -224,8 +234,11 @@ def main():
 
         matches = len([r for r in results if r['status'] == 'match'])
         mismatches = len([r for r in results if r['status'] == 'mismatch'])
-        skipped = len([r for r in results if r['status'].startswith('skipped')])
         errors = len([r for r in results if r['status'] == 'error'])
+
+        skipped_kitty_empty = len([r for r in results if r['status'] == 'skipped_kitty_empty'])
+        skipped_vte_fallback = len([r for r in results if r['status'] == 'skipped_vte_fallback'])
+        skipped_total = skipped_kitty_empty + skipped_vte_fallback
 
         total_keys_tested = len(key_status)
         successful_keys_count = sum(1 for passed in key_status.values() if passed)
@@ -234,11 +247,12 @@ def main():
         print(f"Total combinations run: {len(results)} / {total_tests}")
         print(f"  Matching combinations: {matches}")
         print(f"  Mismatched combinations: {mismatches}")
-        print(f"  Skipped (VTE legacy/Kitty empty): {skipped}")
-        print(f"  Errors: {errors}")
+        print(f"  Total skipped: {skipped_total}")
+        print(f"    - Skipped (empty responce from the kitty code): {skipped_kitty_empty}")
+        print(f"    - Skipped (VTE legacy generation used): {skipped_vte_fallback}")
+        print(f"  Errors in test apps: {errors}")
         print("\n--- Key-based Summary ---")
         print(f"Total unique keys tested: {total_keys_tested}")
-        print(f"Keys with ALL combinations matching: {successful_keys_count} / {total_keys_tested}")
 
         print("\n--- Output Files ---")
         if mismatches or errors:
