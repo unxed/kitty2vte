@@ -122,7 +122,10 @@ static inline guint gdk_keyval_to_lower(guint keyval) {
     if (keyval >= 'A' && keyval <= 'Z') return keyval + ('a' - 'A');
     return keyval;
 }
-
+static inline guint gdk_keyval_to_upper(guint keyval) {
+    if (keyval >= 'a' && keyval <= 'z') return keyval - ('a' - 'A');
+    return keyval;
+}
 
 class MockKeyEvent {
 public:
