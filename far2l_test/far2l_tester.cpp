@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
         if (def.ch != 0) {
 
             auto tmp = ev.dwControlKeyState;
-            if (shift || ((tmp &= CAPSLOCK_ON) && !shift)) {
+            if ((shift && !(tmp &= CAPSLOCK_ON)) || ((tmp &= CAPSLOCK_ON) && !shift)) {
                 ev.uChar.UnicodeChar = def.shift_ch;
             } else {
                 ev.uChar.UnicodeChar = def.ch;
