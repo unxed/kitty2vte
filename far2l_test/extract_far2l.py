@@ -50,17 +50,20 @@ def extract_function_body(source_path, dest_path):
     with open(dest_path, 'w', encoding='utf-8') as f:
         f.writelines(body)
 
-
-    # As far2l's API does not allow us to get unshifted and shifted key values
-    # (we only have UnicodeChar value with shift/caps already applied),
-    # let's emulate shifted/unshifted behavior for US keyboard layout we use for testing.
-    # Errors that cannot be corrected anyway will be excluded from the test
-    # but they can hardly be considered critical.
+	# Adding shifted/unshifted simulation
 
     FILE = Path("far2l_test/far2l_key_press_body.inc")
 
     HEADER = r'''
-/* === AUTO-GENERATED SHIFTED / UNSHIFTED SUPPORT FOR TESTING === */
+/*
+    Auto-generated shifted/unshifted simulation for testing
+
+    As far2l's API does not allow us to get unshifted and shifted key values
+    (we only have UnicodeChar value with shift/caps already applied),
+    let's emulate shifted/unshifted behavior for US keyboard layout we use for testing.
+    Errors that cannot be corrected anyway will be excluded from the test
+    but they can hardly be considered critical.
+*/
 
 auto vkToEnChars = [](int vk) -> std::pair<char, char> {
     // A–Z
