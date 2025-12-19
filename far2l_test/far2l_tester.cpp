@@ -189,12 +189,9 @@ int main(int argc, char** argv) {
         // For simple letters/numbers:
         if (def.ch != 0) {
 
-            auto tmp = ev.dwControlKeyState;
-            if ((shift && !(tmp &= CAPSLOCK_ON)) || ((tmp &= CAPSLOCK_ON) && !shift)) {
-                ev.uChar.UnicodeChar = def.shift_ch;
-            } else {
-                ev.uChar.UnicodeChar = def.ch;
-            }
+			bool isLetter = ev.wVirtualKeyCode >= 'A' && ev.wVirtualKeyCode <= 'Z';
+			bool useShifted = isLetter ? (shift ^ ((ev.dwControlKeyState & CAPSLOCK_ON) != 0)) : shift;
+			ev.uChar.UnicodeChar = useShifted ? def.shift_ch : def.ch;
 
             // Ctrl behavior: usually transforms char to control code (1-26)
             if (ctrl && !alt && isalpha(def.ch)) {
