@@ -181,6 +181,18 @@ int main(int argc, char** argv) {
         KeyDef def = key_map[key_name];
         ev.wVirtualKeyCode = def.vk;
 
+        WORD vk = ev.wVirtualKeyCode;
+        if (
+            vk == VK_INSERT  || vk == VK_DELETE ||
+            vk == VK_HOME    || vk == VK_END    ||
+            vk == VK_PRIOR   || vk == VK_NEXT   ||
+            vk == VK_UP      || vk == VK_DOWN   ||
+            vk == VK_LEFT    || vk == VK_RIGHT  ||
+            vk == VK_DIVIDE)
+        {
+            ev.dwControlKeyState |= ENHANCED_KEY;
+        }
+
         bool shift = (ev.dwControlKeyState & SHIFT_PRESSED);
         bool ctrl = (ev.dwControlKeyState & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED));
         bool alt = (ev.dwControlKeyState & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED));
