@@ -77,9 +77,33 @@ static const KeyInfo key_map[] = {
     {"KP_Home", 57423, 0, NULL}, {"KP_End", 57424, 0, NULL},
     {"KP_Insert", 57425, 0, NULL}, {"KP_Delete", 57426, 0, NULL},
     {"KP_Begin", 57427, 0, NULL},
+    // Non-English (1103 = 'я', 1071 = 'Я')
+    {"я", 1103, 1071, NULL},
     {NULL, 0, 0, NULL}
 };
 
+// Encodes a single Unicode codepoint into a UTF-8 string buffer
+static void encode_codepoint_to_utf8(uint32_t cp, char* buf) {
+    if (cp < 0x80) {
+        buf[0] = cp;
+        buf[1] = '\0';
+    } else if (cp < 0x800) {
+        buf[0] = 0xC0 | (cp >> 6);
+        buf[1] = 0x80 | (cp & 0x3F);
+        buf[2] = '\0';
+    } else if (cp < 0x10000) {
+        buf[0] = 0xE0 | (cp >> 12);
+        buf[1] = 0x80 | ((cp >> 6) & 0x3F);
+        buf[2] = 0x80 | (cp & 0x3F);
+        buf[3] = '\0';
+    } else {
+        buf[0] = 0xF0 | (cp >> 18);
+        buf[1] = 0x80 | ((cp >> 12) & 0x3F);
+        buf[2] = 0x80 | ((cp >> 6) & 0x3F);
+        buf[3] = 0x80 | (cp & 0x3F);
+        buf[4] = '\0';
+    }
+}
 static const KeyInfo* find_key_info(const char* name) {
     for (int i = 0; key_map[i].name != NULL; i++) {
         if (strcmp(key_map[i].name, name) == 0) {
@@ -98,11 +122,12 @@ int main(int argc, char** argv) {
     GLFWkeyevent ev;
     memset(&ev, 0, sizeof(ev));
     ev.action = GLFW_PRESS; // Default
-    
+
     const char* key_name = NULL;
     unsigned int kitty_flags = 0;
     bool cursor_key_mode = false;
     bool has_mods_that_prevent_text = false;
+    const char* base_key_str = NULL;
 
     for (int i = 1; i < argc; i++) {
         const char* arg = argv[i];
@@ -126,6 +151,9 @@ int main(int argc, char** argv) {
         else if (strcmp(arg, "--cursor-key-mode") == 0) {
             cursor_key_mode = true;
         }
+        else if (strcmp(arg, "--base-key") == 0 && i + 1 < argc) {
+            base_key_str = argv[++i];
+        }
     }
 
     if (!key_name) {
@@ -141,33 +169,55 @@ int main(int argc, char** argv) {
 
     ev.key = key_info->key;
     ev.shifted_key = key_info->shifted_key;
-    
-    static char text_buf[2] = {0};
-    if (!has_mods_that_prevent_text) {
-        bool text_generated = false;
-        if (key_info->key >= 'a' && key_info->key <= 'z') {
-            bool shift_active = (ev.mods & GLFW_MOD_SHIFT) != 0;
-            bool caps_active = (ev.mods & GLFW_MOD_CAPS_LOCK) != 0;
-            text_buf[0] = (shift_active ^ caps_active) ? (char)key_info->shifted_key : (char)key_info->key;
-            text_generated = true;
+
+    static char text_buf[8] = {0};
+    bool is_function_key = (key_info->key >= GLFW_FKEY_FIRST && key_info->key <= GLFW_FKEY_LAST);
+    if (!has_mods_that_prevent_text && !is_function_key) {
+        bool shift_active = (ev.mods & GLFW_MOD_SHIFT) != 0;
+        bool caps_active = (ev.mods & GLFW_MOD_CAPS_LOCK) != 0;
+        bool effective_shift = shift_active ^ caps_active;
+
+        // A printable unicode character, but not a PUA functional key
+        if (key_info->key > 127 && key_info->key < 57344) {
+            uint32_t codepoint = effective_shift ? key_info->shifted_key : key_info->key;
+            encode_codepoint_to_utf8(codepoint, text_buf);
+            ev.text = text_buf;
+        } else if (key_info->key >= 'a' && key_info->key <= 'z') {
+            text_buf[0] = effective_shift ? (char)key_info->shifted_key : (char)key_info->key;
+            text_buf[1] = '\0';
+            ev.text = text_buf;
         } else if (key_info->shifted_key != 0) {
-            text_buf[0] = (ev.mods & GLFW_MOD_SHIFT) ? (char)key_info->shifted_key : (char)key_info->key;
-            text_generated = true;
+            text_buf[0] = shift_active ? (char)key_info->shifted_key : (char)key_info->key;
+            text_buf[1] = '\0';
+            ev.text = text_buf;
         } else if (key_info->key < 256) {
              text_buf[0] = (char)key_info->key;
-             text_generated = true;
-        }
-        
-        if (key_info->numpad_text && (ev.mods & GLFW_MOD_NUM_LOCK)) {
-             text_buf[0] = key_info->numpad_text[0];
-             text_generated = true;
+             text_buf[1] = '\0';
+             ev.text = text_buf;
         }
 
-        if (text_generated) {
-            ev.text = text_buf;
+        if (key_info->numpad_text && (ev.mods & GLFW_MOD_NUM_LOCK)) {
+             text_buf[0] = key_info->numpad_text[0];
+             text_buf[1] = '\0';
+             ev.text = text_buf;
         }
     }
 
+    // Set alternate_key (Base Layout Key)
+    if (base_key_str && base_key_str[0]) {
+        ev.alternate_key = base_key_str[0];
+    } else {
+        // Default base key logic for ASCII when not provided
+        uint32_t potential_alt = 0;
+        if (ev.key < 128) {
+            if (ev.key >= 'A' && ev.key <= 'Z') potential_alt = ev.key + 32;
+            else if (ev.key >= 'a' && ev.key <= 'z') potential_alt = ev.key;
+            // For other ASCII like punctuation, base key is the key itself, so we don't set it unless different
+        }
+        if (potential_alt != 0 && potential_alt != ev.key) {
+            ev.alternate_key = potential_alt;
+        }
+    }
 
     char output[KEY_BUFFER_SIZE];
     memset(output, 0, KEY_BUFFER_SIZE);
@@ -182,7 +232,7 @@ int main(int argc, char** argv) {
         fwrite(output, 1, result, stdout);
     }
 
-    fprintf(stderr, "[kittyTester] Key: %u, Shifted: %u, Mods: %d, Flags: %d, Action: %d, Text: '%s' -> Result Len: %d\n", 
+    fprintf(stderr, "[kittyTester] Key: %u, Shifted: %u, Mods: %d, Flags: %d, Action: %d, Text: '%s' -> Result Len: %d\n",
             ev.key, ev.shifted_key, ev.mods, kitty_flags, ev.action, ev.text ? ev.text : "(null)", result);
 
     return 0;

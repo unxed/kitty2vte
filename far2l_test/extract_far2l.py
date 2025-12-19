@@ -14,7 +14,7 @@ def extract_function_body(source_path, dest_path):
     body = []
     in_function = False
     brace_level = 0
-    
+
     # Signature of the function we want to extract
     func_sig = "std::string VT_TranslateKeyToKitty"
 
@@ -40,7 +40,7 @@ def extract_function_body(source_path, dest_path):
 
             if brace_level <= 0:
                 break
-            
+
             body.append(line)
 
     if not body:
@@ -96,7 +96,7 @@ auto vkToEnChars = [](int vk) -> std::pair<char, char> {
         case VK_OEM_3:          return {'`', '~'};
         case VK_SPACE:          return {' ', ' '};
     }
-    return {0, 0}; // не печатающая клавиша
+    return {0, 0}; // non char key
 };
 
 /* === END AUTO-GENERATED === */
@@ -104,19 +104,28 @@ auto vkToEnChars = [](int vk) -> std::pair<char, char> {
 '''
 
     REPL1 = r'''
-	auto [unshifted_src, shifted_src] = vkToEnChars(KeyEvent.wVirtualKeyCode);
-    keycode = unshifted_src;
+    if (KeyEvent.uChar.UnicodeChar > 0x7F) {
+        keycode = towlower(KeyEvent.uChar.UnicodeChar);
+        //printf("[%i->%i]", KeyEvent.uChar.UnicodeChar, keycode);
+    } else {
+        auto [unshifted_src, shifted_src] = vkToEnChars(KeyEvent.wVirtualKeyCode);
+        keycode = unshifted_src;
+    }
     '''.strip()
 
     REPL2 = r'''
-	auto [unshifted_src, shifted_src] = vkToEnChars(KeyEvent.wVirtualKeyCode);
-    shifted = shifted_src;
+    if (KeyEvent.uChar.UnicodeChar > 0x7F) {
+        shifted = towupper(KeyEvent.uChar.UnicodeChar);
+    } else {
+        auto [unshifted_src, shifted_src] = vkToEnChars(KeyEvent.wVirtualKeyCode);
+        shifted = shifted_src;
+    }
     '''.strip()
 
 
     text = FILE.read_text(encoding="utf-8")
 
-    if "AUTO-GENERATED SHIFT / UNSHIFT SUPPORT" not in text:
+    if "Auto-generated shifted/unshifted simulation for testing" not in text:
         text = HEADER + "\n" + text
 
     text = text.replace(
@@ -125,7 +134,7 @@ auto vkToEnChars = [](int vk) -> std::pair<char, char> {
     )
 
     text = text.replace(
-        "shifted = KeyEvent.uChar.UnicodeChar;",
+        "shifted = towupper(KeyEvent.uChar.UnicodeChar);",
         REPL2
     )
 
@@ -137,7 +146,7 @@ auto vkToEnChars = [](int vk) -> std::pair<char, char> {
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        # Default behavior for Makefile simplicity if called without args, 
+        # Default behavior for Makefile simplicity if called without args,
         # though Makefile should ideally pass them.
         source = 'source/vtshell_translation_kitty.cpp'
         dest = 'far2l_test/far2l_key_press_body.inc'

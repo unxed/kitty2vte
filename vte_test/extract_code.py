@@ -12,7 +12,7 @@ def extract_function_body(source_path, dest_path, signature, stop_marker):
 
     body = []
     capturing = False
-    
+
     iter_lines = iter(lines)
     for line in iter_lines:
         if signature in line:
@@ -20,7 +20,7 @@ def extract_function_body(source_path, dest_path, signature, stop_marker):
                 line = next(iter_lines)
             capturing = True
             break
-    
+
     if not capturing:
         print(f"Error: Function start for '{signature}' not found.", file=sys.stderr)
         sys.exit(1)
@@ -32,7 +32,7 @@ def extract_function_body(source_path, dest_path, signature, stop_marker):
         if stop_marker in line:
             body.append('fprintf(stderr, "[DEBUG] Hit legacy_fallback, breaking.\\n");\n')
             break
-        
+
         if "auto skipped_param2 = false;" in line:
             body.append('fprintf(stderr, "[DEBUG] Modifiers value before formatting: %u\\n", modifiers);\n')
             body.append('fprintf(stderr, "[DEBUG] Event type value before formatting: %d\\n", event_type);\n')
@@ -51,12 +51,12 @@ def extract_function_body(source_path, dest_path, signature, stop_marker):
 
     with open(dest_path, 'w', encoding='utf-8') as f:
         f.writelines(body)
-    
+
     print(f"[*] Extracted function body to '{dest_path}'")
 
 if __name__ == "__main__":
     extract_function_body(
-        source_path='source/vte.cc', 
+        source_path='source/vte.cc',
         dest_path='vte_test/vte_key_press_body.inc',
         signature='Terminal::widget_key_press',
         stop_marker='legacy_fallback:'

@@ -78,7 +78,7 @@ bool TesterTerminal::widget_key_press(const MockKeyEvent& event) {
     fprintf(stderr, "PRE-CHECK: event.keycode() != 0? %s\n", (event.keycode() != 0) ? "yes" : "no");
 
 #include "vte_key_press_body.inc"
-    
+
     fprintf(stderr, "[DEBUG] Reached legacy_fallback.\n");
     std::cout << "[LEGACY_FALLBACK]";
     return false;

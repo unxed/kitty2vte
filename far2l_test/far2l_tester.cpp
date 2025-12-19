@@ -11,7 +11,7 @@ std::string VT_TranslateKeyToKitty(const KEY_EVENT_RECORD &KeyEvent, int flags, 
 {
 #include "far2l_key_press_body.inc"
     // Fallback if the extracted body falls through (shouldn't happen usually with return statements)
-    return ""; 
+    return "";
 }
 
 struct KeyDef {
@@ -124,6 +124,10 @@ void init_key_map() {
     key_map["KP_Home"] = { VK_HOME, 0, 0 };
     key_map["KP_End"] = { VK_END, 0, 0 };
     // Add other nav keys if necessary
+
+    // Cyrillic 'я' is on 'Z' key (0x5A)
+    // 0x044F = я, 0x042F = Я
+    key_map["я"] = { 'Z', 0x044F, 0x042F };
 }
 
 int main(int argc, char** argv) {
@@ -215,7 +219,7 @@ int main(int argc, char** argv) {
         // Numpad logic adjustment
         // If it's a keypad key and NumLock is ON, it produces a digit/char
         // If NumLock is OFF, it acts as navigation (VK_HOME etc), but run_tests passes KP_0...
-        // far2l logic handles VK_NUMPADx. 
+        // far2l logic handles VK_NUMPADx.
         if (key_name.rfind("KP_", 0) == 0 && key_name.length() == 4 && isdigit(key_name[3])) {
              if (is_num) {
                  // Produce digit
@@ -223,10 +227,10 @@ int main(int argc, char** argv) {
              } else {
                  // Acts as nav key, usually UnicodeChar is 0
                  ev.uChar.UnicodeChar = 0;
-                 // Note: VK_NUMPAD0 etc are still the VK codes. 
+                 // Note: VK_NUMPAD0 etc are still the VK codes.
                  // far2l logic might convert them to base keys (VK_INSERT etc) if they were passed that way,
                  // but here we pass VK_NUMPADx and let far2l handle it (or not).
-                 // Actually far2l seems to expect VK_INSERT if NumLock is off? 
+                 // Actually far2l seems to expect VK_INSERT if NumLock is off?
                  // Let's check source logic... logic uses `VK_NUMPAD0` in switch.
                  // It seems far2l expects OS to translate scan codes.
                  // For testing purposes, we stick to VK_NUMPADx unless we want to simulate full driver.

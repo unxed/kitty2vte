@@ -18,12 +18,12 @@ typedef unsigned int GdkModifierType;
 #define GDK_MOD5_MASK     (1<<7)  // Hyper
 #define GDK_SUPER_MASK    GDK_MOD4_MASK
 #define GDK_HYPER_MASK    GDK_MOD5_MASK
-#define GDK_META_MASK     (1<<28) 
+#define GDK_META_MASK     (1<<28)
 
 // VTE uses GDK_MOD1_MASK for Alt
 #define VTE_ALT_MASK		GDK_MOD1_MASK
 // In GTK4, GDK_ALT_MASK is absent, GDK_MOD1_MASK is used
-#define GDK_ALT_MASK        GDK_MOD1_MASK 
+#define GDK_ALT_MASK        GDK_MOD1_MASK
 // VTE defines VTE_NUMLOCK_MASK as GDK_MOD2_MASK in gtk3 and as 0 in gtk4,
 // but code we extracted uses VTE_NUMLOCK_MASK, so lets define it
 #define VTE_NUMLOCK_MASK	GDK_MOD2_MASK
@@ -122,21 +122,30 @@ enum {
     GDK_KEY_KP_End = 0xff9c,
     GDK_KEY_KP_Insert = 0xff9e,
     GDK_KEY_KP_Delete = 0xff9f,
-    GDK_KEY_KP_Begin = 0xff9d
+    GDK_KEY_KP_Begin = 0xff9d,
+
+    // Cyrillic
+    GDK_KEY_Cyrillic_ya = 0x06d1,
+    GDK_KEY_Cyrillic_YA = 0x06f1
 };
 
 static inline guint gdk_keyval_to_unicode(guint keyval) {
     if (keyval >= 0x0020 && keyval <= 0x007e) return keyval; // ASCII
     if (keyval >= 0x00a0 && keyval <= 0x00ff) return keyval; // Latin-1
+    if (keyval == GDK_KEY_Cyrillic_ya) return 0x044F; // 1103 я
+    if (keyval == GDK_KEY_Cyrillic_YA) return 0x042F; // 1071 Я
     // Simplified stub for tests
     return keyval;
 }
 static inline guint gdk_keyval_to_lower(guint keyval) {
     if (keyval >= 'A' && keyval <= 'Z') return keyval + ('a' - 'A');
+    if (keyval >= 0x06f1 && keyval <= 0x06fe) return keyval - 0x20;
     return keyval;
 }
+
 static inline guint gdk_keyval_to_upper(guint keyval) {
     if (keyval >= 'a' && keyval <= 'z') return keyval - ('a' - 'A');
+    if (keyval >= 0x06d1 && keyval <= 0x06de) return keyval + 0x20;
     return keyval;
 }
 

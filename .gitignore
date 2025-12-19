@@ -1,6 +1,9 @@
 .gitignore
 build/
-source/
+source/key_encoding.c
+source/keyboard.rs
+source/vte.cc
+source/vtshell_translation_kitty.cpp
 kitty_test/kitty_encoder_body.inc
 vte_test/vte_key_press_body.inc
 far2l_test/far2l_key_press_body.inc

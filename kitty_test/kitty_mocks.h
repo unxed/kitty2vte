@@ -27,7 +27,7 @@
 #define GLFW_MOD_CAPS_LOCK       0x0010
 #define GLFW_MOD_NUM_LOCK        0x0020
 // Extended kitty mods (mapped to GLFW internals usually)
-#define GLFW_MOD_HYPER           0x0040 
+#define GLFW_MOD_HYPER           0x0040
 #define GLFW_MOD_META            0x0080
 
 // GLFW Actions
@@ -100,7 +100,7 @@ enum MockKeys {
     GLFW_FKEY_F23,
     GLFW_FKEY_F24,
     GLFW_FKEY_F25,
-    
+
     // Keypad numbers
     GLFW_FKEY_KP_0,
     GLFW_FKEY_KP_1,
@@ -112,7 +112,7 @@ enum MockKeys {
     GLFW_FKEY_KP_7,
     GLFW_FKEY_KP_8,
     GLFW_FKEY_KP_9,
-    
+
     // Keypad math/funcs
     GLFW_FKEY_KP_DECIMAL,
     GLFW_FKEY_KP_DIVIDE,
@@ -121,7 +121,7 @@ enum MockKeys {
     GLFW_FKEY_KP_ADD,
     GLFW_FKEY_KP_ENTER,
     GLFW_FKEY_KP_EQUAL,
-    
+
     // Keypad navigation
     GLFW_FKEY_KP_HOME,
     GLFW_FKEY_KP_END,
@@ -145,7 +145,7 @@ enum MockKeys {
     GLFW_FKEY_RIGHT_ALT,
     GLFW_FKEY_RIGHT_SUPER,
     GLFW_FKEY_MENU,
-    
+
     GLFW_FKEY_KP_SEPARATOR, // Just in case
     GLFW_FKEY_LAST
 };
@@ -166,9 +166,20 @@ const UTF8State UTF8_ACCEPT = 0;
 const UTF8State UTF8_REJECT = 1;
 
 static inline UTF8State decode_utf8(UTF8State* state, uint32_t* codep, uint32_t byte) {
-    *codep = byte;
-    *state = UTF8_ACCEPT;
-    return UTF8_ACCEPT; 
+    uint32_t b = byte & 0xFF;
+    if (*state == UTF8_ACCEPT) {
+        if (b < 0x80) { *codep = b; return UTF8_ACCEPT; }
+        if ((b & 0xE0) == 0xC0) { *codep = b & 0x1F; *state = 1; return UTF8_REJECT; }
+        if ((b & 0xF0) == 0xE0) { *codep = b & 0x0F; *state = 2; return UTF8_REJECT; }
+        if ((b & 0xF8) == 0xF0) { *codep = b & 0x07; *state = 3; return UTF8_REJECT; }
+        return UTF8_REJECT;
+    } else {
+        if ((b & 0xC0) != 0x80) { *state = UTF8_ACCEPT; return UTF8_REJECT; }
+        *codep = (*codep << 6) | (b & 0x3F);
+        (*state)--;
+        if (*state == 0) return UTF8_ACCEPT;
+        return UTF8_REJECT;
+    }
 }
 
 static inline int encode_utf8(uint32_t codepoint, char* output) {

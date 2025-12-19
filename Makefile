@@ -1,5 +1,6 @@
 CC = gcc
 CXX = g++
+RUSTC = rustc
 
 BUILD_DIR = build
 EXEC_DIR = $(BUILD_DIR)/bin
@@ -14,16 +15,18 @@ FAR2L_CXXFLAGS = -Wall -Wextra -std=c++17
 KITTY_TESTER = $(EXEC_DIR)/kitty_tester
 VTE_TESTER = $(EXEC_DIR)/vte_tester
 FAR2L_TESTER = $(EXEC_DIR)/far2l_tester
+ALACRITTY_TESTER = $(EXEC_DIR)/alacritty_tester
 
 .PHONY: all clean
 
-all: $(BUILD_DIR) $(EXEC_DIR) $(KITTY_TESTER) $(VTE_TESTER) $(FAR2L_TESTER)
+all: $(BUILD_DIR) $(EXEC_DIR) $(KITTY_TESTER) $(VTE_TESTER) $(FAR2L_TESTER) $(ALACRITTY_TESTER)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 	mkdir -p $(BUILD_DIR)/kitty
 	mkdir -p $(BUILD_DIR)/vte
 	mkdir -p $(BUILD_DIR)/far2l
+	mkdir -p $(BUILD_DIR)/alacritty
 
 $(EXEC_DIR):
 	mkdir -p $(EXEC_DIR)
@@ -77,8 +80,18 @@ $(FAR2L_TESTER): $(BUILD_DIR)/far2l/far2l_tester.o
 	$(CXX) $^ -o $@
 	@echo "-> Built $(FAR2L_TESTER)"
 
+# Alacritty Rules
+
+alacritty_test/alacritty_extracted.rs: source/keyboard.rs alacritty_test/extract_alacritty.py
+	@echo "=> Generating Alacritty extracted logic..."
+	@python3 alacritty_test/extract_alacritty.py source/keyboard.rs
+
+$(ALACRITTY_TESTER): alacritty_test/alacritty_tester.rs alacritty_test/alacritty_mocks.rs alacritty_test/alacritty_extracted.rs
+	@echo "=> Compiling Alacritty tester..."
+	$(RUSTC) alacritty_test/alacritty_tester.rs -o $@
+	@echo "-> Built $(ALACRITTY_TESTER)"
 
 clean:
 	@echo "=> Cleaning build files..."
 	rm -rf $(BUILD_DIR)
-	rm -f vte_test/vte_key_press_body.inc kitty_test/kitty_encoder_body.inc far2l_test/far2l_key_press_body.inc
+	rm -f vte_test/vte_key_press_body.inc kitty_test/kitty_encoder_body.inc far2l_test/far2l_key_press_body.inc alacritty_test/alacritty_extracted.rs

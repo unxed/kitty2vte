@@ -66,11 +66,15 @@ void initialize_keyval_map() {
     }
     keyval_map["KP_Home"] = GDK_KEY_KP_Home;
     keyval_map["KP_End"] = GDK_KEY_KP_End;
+
+    // Cyrillic
+    keyval_map["я"] = GDK_KEY_Cyrillic_ya;
+    keyval_map["Я"] = GDK_KEY_Cyrillic_YA;
 }
 
 int main(int argc, char** argv) {
     initialize_keyval_map();
-    
+
     if (argc < 4) {
         std::cerr << "Usage: ./tester --key <Key_Name> --keycode <num> [--shift] [--ctrl] [--alt] [--kitty-flags <num>] [--action <press|release|repeat>]" << std::endl;
         return 1;
@@ -115,7 +119,7 @@ int main(int argc, char** argv) {
     terminal.set_kitty_keyboard_flags(kitty_flags);
 
     MockKeyEvent event(keyval, keycode, modifiers, is_press);
-    
+
     terminal.widget_key_press(event);
 
     return 0;

@@ -15,16 +15,16 @@ SAVE_INTERVAL = 100
 COMMAND_TIMEOUT = 2
 
 # Definition of test targets
-# each target defines:
-#  - binary: path to the tester executable
-#  - cmd_builder: function(binary, base_cmd, key_info, flags) -> list of args
-#  - is_fallback: function(output_str) -> bool (returns true if the test should be skipped/considered legacy)
 def build_vte_cmd(binary, base_cmd, key_info, flags):
     # VTE tester needs the explicit EVDEV keycode
     return [binary] + base_cmd + ['--keycode', str(key_info['keycode']), '--kitty-flags', str(flags)]
 
 def build_far2l_cmd(binary, base_cmd, key_info, flags):
     # Far2l tester maps names internally, keycode is ignored
+    return [binary] + base_cmd + ['--kitty-flags', str(flags)]
+
+def build_alacritty_cmd(binary, base_cmd, key_info, flags):
+    # Alacritty tester maps names internally based on the key name
     return [binary] + base_cmd + ['--kitty-flags', str(flags)]
 
 TARGETS = {
@@ -36,6 +36,11 @@ TARGETS = {
     'far2l': {
         'binary': './build/bin/far2l_tester',
         'cmd_builder': build_far2l_cmd,
+        'is_fallback': lambda out: out == "[EMPTY]"
+    },
+    'alacritty': {
+        'binary': './build/bin/alacritty_tester',
+        'cmd_builder': build_alacritty_cmd,
         'is_fallback': lambda out: out == "[EMPTY]"
     }
 }
@@ -101,6 +106,9 @@ key_map = {
     **{f'KP_{i}': {'name': f'KP_{i}', 'keycode': 86 - (9-i) if i!=0 else 90} for i in range(10)},
     'KP_Home': {'name': 'KP_Home', 'keycode': 79},
     'KP_End': {'name': 'KP_End', 'keycode': 87},
+    # Non-English Layouts
+    # 'я' corresponds to physical 'z' (keycode 52) on standard Russian layout
+    'я': {'name': 'я', 'keycode': 52, 'base_key': 'z'},
 }
 
 def format_raw_output(raw_bytes):
@@ -220,6 +228,8 @@ def main():
 
             # Build commands
             kitty_cmd = [KITTY_TESTER] + base_cmd + ['--kitty-flags', str(flags)]
+            if 'base_key' in key_info:
+                kitty_cmd.extend(['--base-key', key_info['base_key']])
             target_cmd = target_conf['cmd_builder'](target_conf['binary'], base_cmd, key_info, flags)
 
             # Execution
