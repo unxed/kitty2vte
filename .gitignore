@@ -1,6 +1,9 @@
 .gitignore
 build/
 source/
-far2l_test/far2l_key_press_body.inc
 kitty_test/kitty_encoder_body.inc
 vte_test/vte_key_press_body.inc
+far2l_test/far2l_key_press_body.inc
+alacritty_test/alacritty_extracted.rs
+mismatches.log
+test_results.json
