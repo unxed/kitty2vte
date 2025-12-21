@@ -166,9 +166,22 @@ int main(int argc, char** argv) {
         fprintf(stderr, "Error: Unknown key name '%s'.\n", key_name);
         return 1;
     }
-
     ev.key = key_info->key;
     ev.shifted_key = key_info->shifted_key;
+
+    // Apply Caps Lock effect to shifted_key
+    // If Caps Lock is on, the "Shifted" version of a letter is lowercase
+    if ((ev.mods & GLFW_MOD_CAPS_LOCK) && ev.key >= 'a' && ev.key <= 'z') {
+        if (ev.shifted_key >= 'A' && ev.shifted_key <= 'Z') {
+             ev.shifted_key = ev.shifted_key + ('a' - 'A');
+        }
+    }
+
+    // If shifted_key is same as key (e.g. Shift+Caps+a -> 'a', key is 'a'),
+    // it provides no info and should be 0 to match real behavior
+    if (ev.shifted_key == ev.key) {
+        ev.shifted_key = 0;
+    }
 
     static char text_buf[8] = {0};
     bool is_function_key = (key_info->key >= GLFW_FKEY_FIRST && key_info->key <= GLFW_FKEY_LAST);
